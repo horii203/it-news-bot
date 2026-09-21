@@ -8,12 +8,18 @@ const ai = new GoogleGenAI({
 });
 
 async function main() {
-  // RSS取得
+  // =========================
+  // 1. RSS取得
+  // =========================
+
   const feed = await parser.parseURL("https://b.hatena.ne.jp/entrylist/it.rss");
 
   console.log(`取得した記事数: ${feed.items.length}`);
 
-  // 直近24時間の記事
+  // =========================
+  // 2. 直近24時間の記事だけ取得
+  // =========================
+
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
   const recentItems = feed.items.filter((item) => {
@@ -23,7 +29,10 @@ async function main() {
 
   console.log(`直近24時間の記事数: ${recentItems.length}`);
 
-  // AIに渡すJSON
+  // =========================
+  // 3. AIに渡すJSONを作成
+  // =========================
+
   const newsItems = recentItems.map((item) => ({
     title: item.title,
     url: item.link,
@@ -33,7 +42,10 @@ async function main() {
 
   console.log("AIにニュースを渡します");
 
-  // Gemini
+  // =========================
+  // 4. Geminiでニュースを選ぶ
+  // =========================
+
   const response = await ai.models.generateContent({
     model: "gemini-3.5-flash-lite",
     contents: `
@@ -60,6 +72,24 @@ ${JSON.stringify(newsItems, null, 2)}
 
   console.log("Geminiの回答:");
   console.log(response.text);
+
+  // =========================
+  // 5. Discordに投稿
+  // =========================
+
+  const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+
+  const discordResponse = await fetch(webhookUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      content: response.text,
+    }),
+  });
+
+  console.log(`Discord投稿結果: ${discordResponse.status}`);
 }
 
 main().catch((error) => {
