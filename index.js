@@ -41,6 +41,7 @@ async function main() {
   }));
 
   console.log("AIにニュースを渡します");
+  console.log("Gemini API呼び出し開始");
 
   // =========================
   // 4. Geminiでニュースを選ぶ
@@ -51,30 +52,90 @@ async function main() {
     contents: `
 あなたはWebエンジニア向けのITニュース編集者です。
 
-以下のニュース一覧から、Webエンジニアにとって特に有益だと思うニュースを3件選んでください。
+以下のニュース一覧から、Webエンジニアにとって特に有益なニュースを3件選んでください。
 
 選定基準：
 - Web開発に関係する
 - AI、セキュリティ、クラウドなど技術的に重要
 - エンジニアが知っておく価値がある
-- 単なる話題性だけではなく実用性も考慮する
+- 実務で参考になる
+- 単なる話題性だけではなく、技術的な価値を重視する
 
-各ニュースについて、
-- タイトル
-- URL
-- 重要だと思う理由
-を出してください。
+各ニュースについて「point」を1〜2文で簡潔に説明してください。
+「なぜ重要か」だけではなく、この記事から何を知っておくべきか、どんな点が参考になるかを具体的に書いてください。
+
+必ずJSON形式だけで回答してください。
+Markdownのコードブロックは使わないでください。
+JSON以外の文章も出力しないでください。
+
+JSONの形式：
+[
+  {
+    "title": "ニュースタイトル",
+    "url": "ニュースURL",
+    "point": "この記事から知っておきたいポイント"
+  },
+  {
+    "title": "ニュースタイトル",
+    "url": "ニュースURL",
+    "point": "この記事から知っておきたいポイント"
+  },
+  {
+    "title": "ニュースタイトル",
+    "url": "ニュースURL",
+    "point": "この記事から知っておきたいポイント"
+  }
+]
+
+titleとurlは、ニュース一覧にあるものをそのまま使用してください。
+JSONには「title」「url」「point」以外の項目を追加しないでください。
 
 ニュース一覧：
 ${JSON.stringify(newsItems, null, 2)}
 `,
   });
 
+  console.log("Gemini API呼び出し完了");
   console.log("Geminiの回答:");
   console.log(response.text);
 
   // =========================
-  // 5. Discordに投稿
+  // 5. GeminiのJSONを解析
+  // =========================
+
+  const selectedNews = JSON.parse(response.text);
+
+  console.log("選定されたニュース:");
+  console.log(selectedNews);
+
+  // =========================
+  // 6. Discord用に整形
+  // =========================
+
+  let discordMessage = `## 📰 今日のITニュース
+
+Webエンジニア向けに、直近24時間のニュースから3件ピックアップしました。
+
+`;
+
+  selectedNews.forEach((news, index) => {
+    discordMessage += `### ${index + 1}. ${news.title}
+
+💡 ${news.point}
+
+🔗 ${news.url}
+
+`;
+  });
+
+  discordMessage += `---
+🤖 Geminiによる自動選定`;
+
+  console.log("Discordに投稿する内容:");
+  console.log(discordMessage);
+
+  // =========================
+  // 7. Discordに投稿
   // =========================
 
   const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
@@ -85,7 +146,7 @@ ${JSON.stringify(newsItems, null, 2)}
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      content: response.text,
+      content: discordMessage,
     }),
   });
 
