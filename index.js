@@ -17,12 +17,16 @@ async function main() {
 
   console.log(`直近24時間の記事数: ${recentItems.length}`);
 
-  recentItems.forEach((item, index) => {
-    console.log(`${index + 1}. ${item.title}`);
-    console.log(`公開日時: ${item.isoDate}`);
-    console.log(`URL: ${item.link}`);
-    console.log("");
-  });
+  // AIに渡すデータを作成
+  const newsItems = recentItems.map((item) => ({
+    title: item.title,
+    url: item.link,
+    summary: item.contentSnippet || "",
+    publishedAt: item.isoDate,
+  }));
+
+  console.log("\nAIに渡すニュースデータ:");
+  console.log(JSON.stringify(newsItems, null, 2));
 }
 
 main();
