@@ -153,6 +153,18 @@ Webエンジニア向けに、直近24時間のニュースから3件ピック�
   console.log(`Discord投稿結果: ${discordResponse.status}`);
 }
 
-main().catch((error) => {
-  console.error("エラー:", error);
-});
+exports.handler = async () => {
+  try {
+    await main();
+  } catch (error) {
+    console.error("エラー:", error);
+    throw error;
+  }
+};
+
+// ローカル実行
+if (require.main === module) {
+  main().catch((error) => {
+    console.error("エラー:", error);
+  });
+}
