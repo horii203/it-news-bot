@@ -43,13 +43,34 @@ async function main() {
   console.log("AIにニュースを渡します");
   console.log("Gemini API呼び出し開始");
 
+  const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+
+  const postToDiscord = async (content) => {
+    const discordResponse = await fetch(webhookUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ content }),
+    });
+
+    if (!discordResponse.ok) {
+      throw new Error(
+        `Discordへの投稿に失敗しました: ${discordResponse.status} ${discordResponse.statusText}`,
+      );
+    }
+  };
+
   // =========================
   // 4. Geminiでニュースを選ぶ
   // =========================
 
-  const response = await ai.models.generateContent({
-    model: "gemini-3.5-flash-lite",
-    contents: `
+  let response;
+
+  try {
+    response = await ai.models.generateContent({
+      model: "gemini-3.5-flash-lite",
+      contents: `
 あなたはWebエンジニア向けのITニュース編集者です。
 
 以下のニュース一覧から、Webエンジニアにとって特に有益なニュースを3件選んでください。
@@ -90,7 +111,18 @@ JSONには「title」「url」「point」以外の項目を追加しないでく
 ニュース一覧：
 ${JSON.stringify(newsItems, null, 2)}
 `,
-  });
+    });
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    console.error("Gemini API呼び出しに失敗しました:", error);
+
+    await postToDiscord(
+      `## 📰 今日のITニュース\n\n今日はニュースを取得できませんでした。\n\n原因: Gemini APIが利用できませんでした（${reason}）`,
+    );
+
+    console.log("Gemini APIの障害をDiscordへ通知しました");
+    return;
+  }
 
   console.log("Gemini API呼び出し完了");
   console.log("Geminiの回答:");
@@ -137,25 +169,8 @@ Webエンジニア向けに、直近24時間のニュースから3件ピック�
   // 7. Discordに投稿
   // =========================
 
-  const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
-
-  const discordResponse = await fetch(webhookUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      content: discordMessage,
-    }),
-  });
-
-  if (!discordResponse.ok) {
-    throw new Error(
-      `Discordへの投稿に失敗しました: ${discordResponse.status} ${discordResponse.statusText}`,
-    );
-  }
-
-  console.log(`Discord投稿結果: ${discordResponse.status}`);
+  await postToDiscord(discordMessage);
+  console.log("Discord投稿が完了しました");
 }
 
 exports.handler = async () => {
