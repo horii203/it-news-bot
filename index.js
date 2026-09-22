@@ -7,6 +7,59 @@ const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
 });
 
+function parseSelectedNews(text, newsItems) {
+  if (typeof text !== "string" || text.trim() === "") {
+    throw new Error("Geminiの回答が空です");
+  }
+
+  const jsonText = text
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/, "")
+    .trim();
+
+  let selectedNews;
+
+  try {
+    selectedNews = JSON.parse(jsonText);
+  } catch (error) {
+    throw new Error("Geminiの回答をJSONとして解析できません", { cause: error });
+  }
+
+  if (!Array.isArray(selectedNews)) {
+    throw new Error("Geminiの回答が配列ではありません");
+  }
+
+  const expectedCount = Math.min(3, newsItems.length);
+
+  if (selectedNews.length !== expectedCount) {
+    throw new Error(
+      `Geminiの選定件数が不正です: ${selectedNews.length}件（期待値: ${expectedCount}件）`,
+    );
+  }
+
+  const availableIds = new Set(newsItems.map((item) => item.id));
+  const selectedIds = new Set();
+
+  selectedNews.forEach((news) => {
+    if (!news || !Number.isInteger(news.id) || !availableIds.has(news.id)) {
+      throw new Error(`Geminiが存在しないニュースIDを返しました: ${news?.id}`);
+    }
+
+    if (selectedIds.has(news.id)) {
+      throw new Error(`Geminiが同じニュースを重複選定しました: ${news.id}`);
+    }
+
+    if (typeof news.point !== "string" || news.point.trim() === "") {
+      throw new Error(`ニュース${news.id}のpointが不正です`);
+    }
+
+    selectedIds.add(news.id);
+  });
+
+  return selectedNews;
+}
+
 async function main() {
   // =========================
   // 1. RSS取得
@@ -132,7 +185,21 @@ ${JSON.stringify(newsItems, null, 2)}
   // 5. GeminiのJSONを解析
   // =========================
 
-  const selectedNews = JSON.parse(response.text);
+  let selectedNews;
+
+  try {
+    selectedNews = parseSelectedNews(response.text, newsItems);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    console.error("Geminiの回答の検証に失敗しました:", error);
+
+    await postToDiscord(
+      `## 📰 今日のITニュース\n\n今日はニュースを取得できませんでした。\n\n原因: Geminiの回答を正しく処理できませんでした（${reason}）`,
+    );
+
+    console.log("Geminiの回答エラーをDiscordへ通知しました");
+    return;
+  }
 
   console.log("選定されたニュース:");
   console.log(selectedNews);
