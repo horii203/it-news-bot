@@ -149,6 +149,12 @@ Webエンジニア向けに、直近24時間のニュースから3件ピック�
     }),
   });
 
+  if (!discordResponse.ok) {
+    throw new Error(
+      `Discordへの投稿に失敗しました: ${discordResponse.status} ${discordResponse.statusText}`,
+    );
+  }
+
   console.log(`Discord投稿結果: ${discordResponse.status}`);
 }
 
