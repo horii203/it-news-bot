@@ -7,6 +7,32 @@ const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
 });
 
+const GEMINI_TIMEOUT_MS = 45_000;
+
+async function generateGeminiContent(contents) {
+  let timeoutId;
+
+  try {
+    return await Promise.race([
+      ai.models.generateContent({
+        model: "gemini-3.5-flash-lite",
+        contents,
+      }),
+      new Promise((_, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(
+            new Error(
+              `Gemini APIが${GEMINI_TIMEOUT_MS / 1000}秒以内に応答しませんでした`,
+            ),
+          );
+        }, GEMINI_TIMEOUT_MS);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 function parseSelectedNews(text, newsItems) {
   if (typeof text !== "string" || text.trim() === "") {
     throw new Error("Geminiの回答が空です");
@@ -129,9 +155,7 @@ async function main() {
   let response;
 
   try {
-    response = await ai.models.generateContent({
-      model: "gemini-3.5-flash-lite",
-      contents: `
+    response = await generateGeminiContent(`
 あなたはWebエンジニア向けのITニュース編集者です。
 
 以下のニュース一覧から、Webエンジニアにとって特に有益なニュースを3件選んでください。
@@ -171,8 +195,7 @@ JSONには「title」「url」「point」以外の項目を追加しないでく
 
 ニュース一覧：
 ${JSON.stringify(newsItems, null, 2)}
-`,
-    });
+`);
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     console.error("Gemini API呼び出しに失敗しました:", error);
