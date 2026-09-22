@@ -15,6 +15,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Debug OIDC
+        uses: github/actions-oidc-debugger@main
+
       - name: Checkout
         uses: actions/checkout@v4
 
