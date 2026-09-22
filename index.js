@@ -33,11 +33,11 @@ async function main() {
   // 3. AIに渡すJSONを作成
   // =========================
 
-  const newsItems = recentItems.map((item) => ({
+  const newsItems = recentItems.map((item, index) => ({
+    id: index + 1,
     title: item.title,
-    url: item.link,
     summary: item.contentSnippet || "",
-    publishedAt: item.isoDate,
+    url: item.link,
   }));
 
   console.log("AIにニュースを渡します");
@@ -71,18 +71,15 @@ JSON以外の文章も出力しないでください。
 JSONの形式：
 [
   {
-    "title": "ニュースタイトル",
-    "url": "ニュースURL",
+    "id": 1,
     "point": "この記事から知っておきたいポイント"
   },
   {
-    "title": "ニュースタイトル",
-    "url": "ニュースURL",
+    "id": 5,
     "point": "この記事から知っておきたいポイント"
   },
   {
-    "title": "ニュースタイトル",
-    "url": "ニュースURL",
+    "id": 8,
     "point": "この記事から知っておきたいポイント"
   }
 ]
@@ -119,11 +116,13 @@ Webエンジニア向けに、直近24時間のニュースから3件ピック�
 `;
 
   selectedNews.forEach((news, index) => {
-    discordMessage += `### ${index + 1}. ${news.title}
+    const originalNews = newsItems.find((item) => item.id === news.id);
+
+    discordMessage += `### ${index + 1}. ${originalNews.title}
 
 💡 ${news.point}
 
-🔗 ${news.url}
+🔗 ${originalNews.url}
 
 `;
   });
