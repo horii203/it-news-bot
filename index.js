@@ -114,6 +114,14 @@ async function main() {
     }
   };
 
+  if (newsItems.length === 0) {
+    await postToDiscord(
+      "## 📰 今日のITニュース\n\n今日は直近24時間の記事がありませんでした。",
+    );
+    console.log("直近24時間の記事がないため処理を終了しました");
+    return;
+  }
+
   // =========================
   // 4. Geminiでニュースを選ぶ
   // =========================
